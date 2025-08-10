@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="bg-primary text-white py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="display-4 fw-bold">Stay Safe with AI-Powered Crime Prediction</h1>
+                <p class="lead">SafePath uses machine learning to predict crime risks and suggest the safest routes for your journey across India.</p>
+                <button id="getCurrentLocation" class="btn btn-light btn-lg">
+                    <i class="fas fa-crosshairs me-2"></i>Get My Current Risk Assessment
+                </button>
+            </div>
+            <div class="col-lg-4">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Current Location Risk
+                        </h5>
+                        <div id="currentRiskDisplay">
+                            <p class="text-muted">Click the button to assess your current location</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Dashboard Section -->
+<section id="dashboard" class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Crime Statistics Dashboard</h2>
+        
+        <div class="row g-4 mb-5">
+            <div class="col-md-3">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
+                        <h3 id="totalCrimes" class="text-white">-</h3>
+                        <p class="text-muted">Total Crimes</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                        <h3 id="recentCrimes" class="text-white">-</h3>
+                        <p class="text-muted">Recent (30 days)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-chart-line fa-3x text-info mb-3"></i>
+                        <h3 id="riskLevel" class="text-white">-</h3>
+                        <p class="text-muted">Overall Risk Level</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-shield-alt fa-3x text-success mb-3"></i>
+                        <h3 id="safeRoutes" class="text-white">-</h3>
+                        <p class="text-muted">Safe Routes Generated</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>Crime Types Distribution
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="crimeTypesChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-clock me-2"></i>Hourly Crime Pattern
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="hourlyChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Map Section -->
+<section id="map-section" class="py-5 bg-dark">
+    <div class="container-fluid">
+        <h2 class="text-center text-white mb-4">Interactive Crime Map</h2>
+        
+        <div class="row">
+            <div class="col-lg-9">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-body p-0">
+                        <div id="crimeMap" style="height: 600px; width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-header">
+                        <h5 class="mb-0 text-white">
+                            <i class="fas fa-filter me-2"></i>Map Controls
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label text-white">Show Crimes Within:</label>
+                            <select id="radiusFilter" class="form-select">
+                                <option value="5">5 km</option>
+                                <option value="10" selected>10 km</option>
+                                <option value="25">25 km</option>
+                                <option value="50">50 km</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-white">Max Crimes to Show:</label>
+                            <select id="limitFilter" class="form-select">
+                                <option value="100">100</option>
+                                <option value="500" selected>500</option>
+                                <option value="1000">1000</option>
+                            </select>
+                        </div>
+                        
+                        <button id="refreshMap" class="btn btn-primary w-100 mb-3">
+                            <i class="fas fa-sync-alt me-2"></i>Refresh Map
+                        </button>
+                        
+                        <div class="text-white">
+                            <h6>Legend:</h6>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="me-2" style="width: 12px; height: 12px; background-color: #dc3545; border-radius: 50%;"></div>
+                                <small>High Severity Crime</small>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="me-2" style="width: 12px; height: 12px; background-color: #ffc107; border-radius: 50%;"></div>
+                                <small>Medium Severity Crime</small>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="me-2" style="width: 12px; height: 12px; background-color: #28a745; border-radius: 50%;"></div>
+                                <small>Low Severity Crime</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="me-2" style="width: 12px; height: 12px; background-color: #007bff; border-radius: 50%;"></div>
+                                <small>Your Location</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card bg-dark border-secondary mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0 text-white">
+                            <i class="fas fa-info-circle me-2"></i>Area Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="areaInfo">
+                            <p class="text-muted">Click on the map to get area information</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Route Planner Section -->
+<section id="route-planner" class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Safe Route Planner</h2>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-header">
+                        <h5 class="mb-0 text-white">
+                            <i class="fas fa-route me-2"></i>Plan Your Safe Route
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="routeForm">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-white">From (Latitude)</label>
+                                    <input type="number" id="startLat" class="form-control" step="any" placeholder="28.7041" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-white">From (Longitude)</label>
+                                    <input type="number" id="startLng" class="form-control" step="any" placeholder="77.1025" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-white">To (Latitude)</label>
+                                    <input type="number" id="endLat" class="form-control" step="any" placeholder="19.0760" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-white">To (Longitude)</label>
+                                    <input type="number" id="endLng" class="form-control" step="any" placeholder="72.8777" required>
+                                </div>
+                                <div class="col-12">
+                                    <button type="button" id="useCurrentLocation" class="btn btn-secondary me-2">
+                                        <i class="fas fa-crosshairs me-1"></i>Use Current Location as Start
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search me-1"></i>Find Safe Route
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <div id="routeResult" class="mt-4" style="display: none;">
+                            <hr class="border-secondary">
+                            <h6 class="text-white">Route Information:</h6>
+                            <div id="routeDetails"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-header">
+                        <h5 class="mb-0 text-white">
+                            <i class="fas fa-lightbulb me-2"></i>Safety Tips
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled text-white">
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Avoid poorly lit areas at night
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Stay in well-populated areas
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Trust your instincts about unsafe areas
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Keep emergency contacts handy
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Share your route with trusted contacts
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Use well-traveled main roads when possible
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card bg-dark border-secondary mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0 text-white">
+                            <i class="fas fa-phone me-2"></i>Emergency Contacts
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-white">
+                            <p class="mb-2"><strong>Police:</strong> 100</p>
+                            <p class="mb-2"><strong>Fire:</strong> 101</p>
+                            <p class="mb-2"><strong>Ambulance:</strong> 108</p>
+                            <p class="mb-0"><strong>Women Helpline:</strong> 1091</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark">
+            <div class="modal-body text-center p-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5 class="text-white">Processing your request...</h5>
+                <p class="text-muted mb-0">This may take a few moments</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<script src="{{ url_for('static', filename='js/crime-predictor.js') }}"></script>
+{% endblock %}
