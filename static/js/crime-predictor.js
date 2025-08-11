@@ -324,7 +324,6 @@ class CrimePredictor {
             .then(data => {
                 if (data.success) {
                     this.updateDashboard(data);
-                    this.updateCharts(data);
                 } else {
                     console.error('Failed to load statistics:', data.error);
                 }
@@ -349,104 +348,7 @@ class CrimePredictor {
     }
     
     setupCharts() {
-        // Initialize chart contexts
-        this.charts.crimeTypesCtx = document.getElementById('crimeTypesChart').getContext('2d');
-        this.charts.hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
-    }
-    
-    updateCharts(stats) {
-        // Crime types chart
-        if (this.charts.crimeTypesChart) {
-            this.charts.crimeTypesChart.destroy();
-        }
-        
-        const crimeTypes = stats.crime_types.sort((a, b) => b.count - a.count).slice(0, 8);
-        
-        this.charts.crimeTypesChart = new Chart(this.charts.crimeTypesCtx, {
-            type: 'doughnut',
-            data: {
-                labels: crimeTypes.map(item => item.type),
-                datasets: [{
-                    data: crimeTypes.map(item => item.count),
-                    backgroundColor: [
-                        '#dc3545', '#ffc107', '#28a745', '#007bff',
-                        '#6f42c1', '#fd7e14', '#20c997', '#6c757d'
-                    ],
-                    borderWidth: 2,
-                    borderColor: '#343a40'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: '#ffffff',
-                            font: {
-                                size: 11
-                            }
-                        }
-                    }
-                }
-            }
-        });
-        
-        // Hourly distribution chart
-        if (this.charts.hourlyChart) {
-            this.charts.hourlyChart.destroy();
-        }
-        
-        // Ensure we have data for all 24 hours
-        const hourlyData = new Array(24).fill(0);
-        stats.hourly_distribution.forEach(item => {
-            hourlyData[item.hour] = item.count;
-        });
-        
-        this.charts.hourlyChart = new Chart(this.charts.hourlyCtx, {
-            type: 'line',
-            data: {
-                labels: Array.from({length: 24}, (_, i) => `${i}:00`),
-                datasets: [{
-                    label: 'Crimes',
-                    data: hourlyData,
-                    borderColor: '#007bff',
-                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            color: '#ffffff'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            color: '#ffffff'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
+        // Chart functionality removed per user request
     }
     
     scrollToMap() {
