@@ -28,7 +28,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="#dashboard">
                             <i class="fas fa-chart-bar me-1"></i>Dashboard
@@ -40,8 +40,31 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="#safe-places">
+                            <i class="fas fa-shield-alt me-1"></i>Safe Places
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="#route-planner">
                             <i class="fas fa-route me-1"></i>Route Planner
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item d-none" id="authLinks">
+                        <a class="nav-link" href="{{ url_for('profile') }}">
+                            <i class="fas fa-user me-1"></i><span id="usernameDisplay">Profile</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" id="unauthLinks">
+                        <a class="nav-link" href="{{ url_for('login') }}">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </a>
+                    </li>
+                    <li class="nav-item" id="unauthLinksRegister">
+                        <a class="nav-link" href="{{ url_for('register') }}">
+                            <i class="fas fa-user-plus me-1"></i>Register
                         </a>
                     </li>
                 </ul>

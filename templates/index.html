@@ -159,6 +159,102 @@
     </div>
 </section>
 
+<!-- Safe Places Section -->
+<section id="safe-places" class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="text-center text-white mb-4">
+                    <i class="fas fa-shield-alt text-primary me-2"></i>Find Safe Places
+                </h2>
+                <p class="text-center text-muted mb-5">
+                    Discover verified safe places like police stations, hospitals, and government offices near your location
+                </p>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Controls -->
+            <div class="col-lg-4">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-body">
+                        <h5 class="text-white mb-3">Search Filters</h5>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-white">Place Type</label>
+                            <select id="safeTypeFilter" class="form-select">
+                                <option value="">All Types</option>
+                                <option value="police_station">Police Stations</option>
+                                <option value="hospital">Hospitals</option>
+                                <option value="fire_station">Fire Stations</option>
+                                <option value="government_office">Government Offices</option>
+                                <option value="bank">Banks</option>
+                                <option value="school">Schools</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-white">Search Radius</label>
+                            <select id="safeRadiusFilter" class="form-select">
+                                <option value="2">2 km</option>
+                                <option value="5" selected>5 km</option>
+                                <option value="10">10 km</option>
+                                <option value="20">20 km</option>
+                            </select>
+                        </div>
+                        
+                        <button id="findSafePlacesBtn" class="btn btn-primary w-100 mb-3">
+                            <i class="fas fa-search me-2"></i>Find Safe Places Near Me
+                        </button>
+                        
+                        <button id="showAllSafePlacesBtn" class="btn btn-secondary w-100">
+                            <i class="fas fa-globe me-2"></i>Show All Places
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SOS Alert (for authenticated users) -->
+                <div class="card bg-dark border-secondary mt-4 d-none" id="sosCard">
+                    <div class="card-body">
+                        <h5 class="text-white mb-3">
+                            <i class="fas fa-exclamation-triangle text-danger me-2"></i>Emergency SOS
+                        </h5>
+                        <p class="text-muted small">Send immediate alert with your location</p>
+                        <button id="quickSOSBtn" class="btn btn-danger w-100">
+                            <i class="fas fa-exclamation-triangle me-2"></i>SEND SOS ALERT
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Results and Map -->
+            <div class="col-lg-8">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="text-white mb-0">Safe Places</h5>
+                            <div id="safePlacesCount" class="badge bg-primary">0 found</div>
+                        </div>
+                        
+                        <!-- Map placeholder -->
+                        <div id="safePlacesMap" style="height: 300px; background: #1a1a1a; border-radius: 8px;" class="mb-3 d-flex align-items-center justify-content-center">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-map fa-2x mb-2"></i>
+                                <p>Click "Find Safe Places Near Me" to see locations on map</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Places list -->
+                        <div id="safePlacesList" class="safe-places-list">
+                            <!-- Places will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Route Planner Section -->
 <section id="route-planner" class="py-5">
     <div class="container">

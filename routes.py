@@ -1,9 +1,10 @@
 import json
 import logging
-from datetime import datetime
-from flask import render_template, request, jsonify
+from datetime import datetime, timedelta
+from flask import render_template, request, jsonify, redirect, url_for, flash, session
+from flask_login import login_user, logout_user, login_required, current_user
 from app import app, db
-from models import CrimeData, SafeRoute
+from models import CrimeData, SafeRoute, User, SOSAlert, SafePlace
 from crime_predictor import crime_predictor
 import numpy as np
 
@@ -11,6 +12,112 @@ import numpy as np
 def index():
     """Main dashboard page"""
     return render_template('index.html')
+
+@app.route('/login')
+def login():
+    """Login page"""
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    return render_template('auth/login.html')
+
+@app.route('/register')
+def register():
+    """Registration page"""
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    return render_template('auth/register.html')
+
+@app.route('/profile')
+@login_required
+def profile():
+    """User profile page"""
+    return render_template('profile.html')
+
+@app.route('/api/auth/login', methods=['POST'])
+def api_login():
+    """Login API endpoint"""
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return jsonify({'success': False, 'error': 'Username and password are required'}), 400
+        
+        # Find user by username or email
+        user = User.query.filter(
+            (User.username == username) | (User.email == username)
+        ).first()
+        
+        if user and user.check_password(password):
+            login_user(user, remember=True)
+            return jsonify({
+                'success': True,
+                'message': 'Logged in successfully',
+                'user': user.to_dict()
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
+            
+    except Exception as e:
+        logging.error(f"Login error: {e}")
+        return jsonify({'success': False, 'error': 'Login failed'}), 500
+
+@app.route('/api/auth/register', methods=['POST'])
+def api_register():
+    """Registration API endpoint"""
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        phone = data.get('phone')
+        emergency_contact = data.get('emergency_contact')
+        emergency_phone = data.get('emergency_phone')
+        
+        # Validate required fields
+        if not all([username, email, password]):
+            return jsonify({'success': False, 'error': 'Username, email, and password are required'}), 400
+        
+        # Check if user already exists
+        if User.query.filter_by(username=username).first():
+            return jsonify({'success': False, 'error': 'Username already exists'}), 400
+            
+        if User.query.filter_by(email=email).first():
+            return jsonify({'success': False, 'error': 'Email already exists'}), 400
+        
+        # Create new user
+        user = User(
+            username=username,
+            email=email,
+            phone=phone,
+            emergency_contact=emergency_contact,
+            emergency_phone=emergency_phone
+        )
+        user.set_password(password)
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        login_user(user, remember=True)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Account created successfully',
+            'user': user.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Registration error: {e}")
+        return jsonify({'success': False, 'error': 'Registration failed'}), 500
+
+@app.route('/api/auth/logout', methods=['POST'])
+@login_required
+def api_logout():
+    """Logout API endpoint"""
+    logout_user()
+    return jsonify({'success': True, 'message': 'Logged out successfully'})
 
 @app.route('/api/current-location-risk', methods=['POST'])
 def get_current_location_risk():
@@ -263,5 +370,140 @@ def calculate_route_distance(route_points):
         total_distance += distance
     
     return round(total_distance, 2)
+
+# SOS and Safe Places APIs
+@app.route('/api/sos/alert', methods=['POST'])
+@login_required
+def create_sos_alert():
+    """Create an SOS alert"""
+    try:
+        data = request.get_json()
+        latitude = float(data.get('latitude'))
+        longitude = float(data.get('longitude'))
+        message = data.get('message', 'Emergency help needed!')
+        
+        # Create SOS alert
+        sos_alert = SOSAlert(
+            user_id=current_user.id,
+            latitude=latitude,
+            longitude=longitude,
+            message=message,
+            status='active'
+        )
+        
+        db.session.add(sos_alert)
+        db.session.commit()
+        
+        # In a real app, you would send notifications to emergency contacts
+        # and potentially law enforcement
+        
+        return jsonify({
+            'success': True,
+            'message': 'SOS alert sent successfully',
+            'alert': sos_alert.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error creating SOS alert: {e}")
+        return jsonify({'success': False, 'error': 'Failed to send SOS alert'}), 500
+
+@app.route('/api/sos/alerts')
+@login_required
+def get_user_sos_alerts():
+    """Get user's SOS alerts"""
+    try:
+        alerts = SOSAlert.query.filter_by(user_id=current_user.id).order_by(SOSAlert.created_at.desc()).all()
+        
+        return jsonify({
+            'success': True,
+            'alerts': [alert.to_dict() for alert in alerts]
+        })
+        
+    except Exception as e:
+        logging.error(f"Error getting SOS alerts: {e}")
+        return jsonify({'success': False, 'error': 'Failed to get SOS alerts'}), 500
+
+@app.route('/api/sos/alert/<int:alert_id>/resolve', methods=['POST'])
+@login_required
+def resolve_sos_alert(alert_id):
+    """Resolve an SOS alert"""
+    try:
+        alert = SOSAlert.query.filter_by(id=alert_id, user_id=current_user.id).first()
+        
+        if not alert:
+            return jsonify({'success': False, 'error': 'Alert not found'}), 404
+        
+        alert.status = 'resolved'
+        alert.resolved_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'SOS alert resolved',
+            'alert': alert.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error resolving SOS alert: {e}")
+        return jsonify({'success': False, 'error': 'Failed to resolve SOS alert'}), 500
+
+@app.route('/api/safe-places')
+def get_safe_places():
+    """Get safe places around a location"""
+    try:
+        lat = request.args.get('lat', type=float)
+        lng = request.args.get('lng', type=float)
+        radius = request.args.get('radius', 5, type=float)  # km
+        place_type = request.args.get('type')  # optional filter
+        limit = request.args.get('limit', 50, type=int)
+        
+        query = SafePlace.query
+        
+        # Filter by location if provided
+        if lat and lng:
+            lat_delta = radius / 111.0
+            lng_delta = radius / (111.0 * np.cos(np.radians(lat)))
+            
+            query = query.filter(
+                SafePlace.latitude.between(lat - lat_delta, lat + lat_delta),
+                SafePlace.longitude.between(lng - lng_delta, lng + lng_delta)
+            )
+        
+        # Filter by place type if provided
+        if place_type:
+            query = query.filter_by(place_type=place_type)
+        
+        # Prioritize verified places and order by creation date
+        safe_places = query.order_by(SafePlace.verified.desc(), SafePlace.created_at.desc()).limit(limit).all()
+        
+        return jsonify({
+            'success': True,
+            'places': [place.to_dict() for place in safe_places],
+            'total': len(safe_places)
+        })
+        
+    except Exception as e:
+        logging.error(f"Error getting safe places: {e}")
+        return jsonify({'success': False, 'error': 'Failed to get safe places'}), 500
+
+@app.route('/api/safe-places/types')
+def get_safe_place_types():
+    """Get available safe place types"""
+    types = [
+        {'value': 'police_station', 'label': 'Police Stations', 'icon': 'fas fa-shield-alt'},
+        {'value': 'hospital', 'label': 'Hospitals', 'icon': 'fas fa-hospital'},
+        {'value': 'fire_station', 'label': 'Fire Stations', 'icon': 'fas fa-fire-extinguisher'},
+        {'value': 'government_office', 'label': 'Government Offices', 'icon': 'fas fa-university'},
+        {'value': 'bank', 'label': 'Banks', 'icon': 'fas fa-university'},
+        {'value': 'school', 'label': 'Schools', 'icon': 'fas fa-school'}
+    ]
+    
+    return jsonify({
+        'success': True,
+        'types': types
+    })
 
 from datetime import timedelta
