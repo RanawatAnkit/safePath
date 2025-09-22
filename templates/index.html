@@ -80,7 +80,20 @@
 <section id="map-section" class="py-5 bg-dark">
     <div class="container-fluid">
         <h2 class="text-center text-white mb-4">Interactive Crime Map</h2>
-        
+
+        <!-- Search Boxes and Button Row -->
+        <div class="row justify-content-center mb-4">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <input type="text" id="sourceInput" class="form-control" placeholder="Source">
+                    <input type="text" id="destinationInput" class="form-control" placeholder="Destination">
+                    <button id="findRouteBtn" class="btn btn-primary">
+                        <i class="fas fa-route me-2"></i>Find Route
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div class="row">
             <div class="col-lg-9">
                 <div class="card bg-dark border-secondary">
@@ -158,6 +171,7 @@
         </div>
     </div>
 </section>
+
 
 <!-- Safe Places Section -->
 <section id="safe-places" class="py-5">
@@ -255,112 +269,98 @@
     </div>
 </section>
 
-<!-- Route Planner Section -->
-<section id="route-planner" class="py-5">
-    <div class="container">
-        <h2 class="text-center mb-5">Safe Route Planner</h2>
-        
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="card bg-dark border-secondary">
-                    <div class="card-header">
-                        <h5 class="mb-0 text-white">
-                            <i class="fas fa-route me-2"></i>Plan Your Safe Route
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="routeForm">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label text-white">From (Latitude)</label>
-                                    <input type="number" id="startLat" class="form-control" step="any" placeholder="28.7041" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-white">From (Longitude)</label>
-                                    <input type="number" id="startLng" class="form-control" step="any" placeholder="77.1025" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-white">To (Latitude)</label>
-                                    <input type="number" id="endLat" class="form-control" step="any" placeholder="19.0760" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-white">To (Longitude)</label>
-                                    <input type="number" id="endLng" class="form-control" step="any" placeholder="72.8777" required>
-                                </div>
-                                <div class="col-12">
-                                    <button type="button" id="useCurrentLocation" class="btn btn-secondary me-2">
-                                        <i class="fas fa-crosshairs me-1"></i>Use Current Location as Start
-                                    </button>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-search me-1"></i>Find Safe Route
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                        
-                        <div id="routeResult" class="mt-4" style="display: none;">
-                            <hr class="border-secondary">
-                            <h6 class="text-white">Route Information:</h6>
-                            <div id="routeDetails"></div>
-                        </div>
-                    </div>
+<!-- Crime Report Section -->
+<section id="report-crime" class="py-5">
+  <div class="container">
+    <h2 class="text-center mb-5">Report a Crime</h2>
+
+    <div class="row">
+      <div class="col-lg-8">
+        <div class="card bg-dark border-secondary">
+          <div class="card-header">
+            <h5 class="mb-0 text-white">
+              <i class="fas fa-exclamation-triangle me-2"></i>Upload Crime Evidence
+            </h5>
+          </div>
+          <div class="card-body">
+            <form id="crimeForm" enctype="multipart/form-data">
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label text-white">Crime Title</label>
+                  <input type="text" id="crimeTitle" class="form-control" placeholder="e.g. Theft near market" required>
                 </div>
-            </div>
-            <div class="col-lg-4">
-                <div class="card bg-dark border-secondary">
-                    <div class="card-header">
-                        <h5 class="mb-0 text-white">
-                            <i class="fas fa-lightbulb me-2"></i>Safety Tips
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <ul class="list-unstyled text-white">
-                            <li class="mb-2">
-                                <i class="fas fa-check-circle text-success me-2"></i>
-                                Avoid poorly lit areas at night
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-check-circle text-success me-2"></i>
-                                Stay in well-populated areas
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-check-circle text-success me-2"></i>
-                                Trust your instincts about unsafe areas
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-check-circle text-success me-2"></i>
-                                Keep emergency contacts handy
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-check-circle text-success me-2"></i>
-                                Share your route with trusted contacts
-                            </li>
-                            <li class="mb-2">
-                                <i class="fas fa-check-circle text-success me-2"></i>
-                                Use well-traveled main roads when possible
-                            </li>
-                        </ul>
-                    </div>
+
+                <div class="col-12">
+                  <label class="form-label text-white">Description</label>
+                  <textarea id="crimeDescription" class="form-control" rows="3" placeholder="Describe what happened..." required></textarea>
                 </div>
-                
-                <div class="card bg-dark border-secondary mt-3">
-                    <div class="card-header">
-                        <h5 class="mb-0 text-white">
-                            <i class="fas fa-phone me-2"></i>Emergency Contacts
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="text-white">
-                            <p class="mb-2"><strong>Police:</strong> 100</p>
-                            <p class="mb-2"><strong>Fire:</strong> 101</p>
-                            <p class="mb-2"><strong>Ambulance:</strong> 108</p>
-                            <p class="mb-0"><strong>Women Helpline:</strong> 1091</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+
+                <div class="col-12">
+    <label class="form-label text-white">Location</label>
+    <input type="text" id="crimeLocation" class="form-control" placeholder="Enter location (e.g. Connaught Place, Delhi)" required>
     </div>
+
+                <div class="col-12">
+                  <label class="form-label text-white">Upload Evidence (Photo/Video)</label>
+                  <input type="file" id="crimeFile" class="form-control" accept="image/*,video/*" required>
+                </div>
+
+                <div class="col-12">
+                  <button type="button" id="useCurrentLocation" class="btn btn-secondary me-2">
+                    <i class="fas fa-crosshairs me-1"></i>Use Current Location
+                  </button>
+                  <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-upload me-1"></i>Submit Report
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <!-- Report Confirmation -->
+            <div id="reportResult" class="mt-4" style="display: none;">
+              <hr class="border-secondary">
+              <h6 class="text-white">Report Status:</h6>
+              <div id="reportDetails" class="text-white"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Safety Tips / Emergency Contacts (unchanged) -->
+      <div class="col-lg-4">
+        <div class="card bg-dark border-secondary">
+          <div class="card-header">
+            <h5 class="mb-0 text-white">
+              <i class="fas fa-lightbulb me-2"></i>Safety Tips
+            </h5>
+          </div>
+          <div class="card-body">
+            <ul class="list-unstyled text-white">
+              <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Stay alert in public places</li>
+              <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Record details safely</li>
+              <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Do not confront suspects</li>
+              <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Share report with authorities</li>
+              <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Keep backup copies of evidence</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card bg-dark border-secondary mt-3">
+          <div class="card-header">
+            <h5 class="mb-0 text-white">
+              <i class="fas fa-phone me-2"></i>Emergency Contacts
+            </h5>
+          </div>
+          <div class="card-body text-white">
+            <p class="mb-2"><strong>Police:</strong> 100</p>
+            <p class="mb-2"><strong>Fire:</strong> 101</p>
+            <p class="mb-2"><strong>Ambulance:</strong> 108</p>
+            <p class="mb-0"><strong>Women Helpline:</strong> 1091</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- Loading Modal -->
@@ -380,6 +380,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 <script src="{{ url_for('static', filename='js/map.js') }}"></script>
 <script src="{{ url_for('static', filename='js/crime-predictor.js') }}"></script>
 {% endblock %}

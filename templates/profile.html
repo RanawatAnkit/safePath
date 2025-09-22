@@ -74,28 +74,44 @@
 
 <script>
 // Load user information
-function loadUserInfo() {
-    // This would typically get user info from server or localStorage
-    // For now, showing basic structure
-    document.getElementById('userInfo').innerHTML = `
-        <div class="mb-3">
-            <strong class="text-white">Username:</strong>
-            <span class="text-muted ms-2">Loading...</span>
-        </div>
-        <div class="mb-3">
-            <strong class="text-white">Email:</strong>
-            <span class="text-muted ms-2">Loading...</span>
-        </div>
-        <div class="mb-3">
-            <strong class="text-white">Phone:</strong>
-            <span class="text-muted ms-2">Loading...</span>
-        </div>
-        <div class="mb-3">
-            <strong class="text-white">Emergency Contact:</strong>
-            <span class="text-muted ms-2">Loading...</span>
-        </div>
-    `;
+async function loadUserInfo() {
+    try {
+        const response = await fetch('/api/auth/get_current_user');
+        const data = await response.json();
+        const user=data.user;
+        console.log(data)
+        if (data.is_authenticated) {
+            document.getElementById('userInfo').innerHTML = `
+                <div class="mb-3">
+                    <strong class="text-white">Username:</strong>
+                    <span class="text-muted ms-2">${user.username}</span>
+                </div>
+                <div class="mb-3">
+                    <strong class="text-white">Email:</strong>
+                    <span class="text-muted ms-2">${user.email}</span>
+                </div>
+                <div class="mb-3">
+                    <strong class="text-white">Phone:</strong>
+                    <span class="text-muted ms-2">${user.phone || 'N/A'}</span>
+                </div>
+                <div class="mb-3">
+                    <strong class="text-white">Emergency Contact:</strong>
+                    <span class="text-muted ms-2">${user.emergency_phone || 'N/A'}</span>
+                </div>
+            `;
+        } else {
+            document.getElementById('userInfo').innerHTML = `
+                <p class="text-muted">User not logged in.</p>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading user info:', error);
+        document.getElementById('userInfo').innerHTML = `
+            <p class="text-danger">Failed to load user info.</p>
+        `;
+    }
 }
+
 
 // Load SOS history
 async function loadSOSHistory() {
@@ -215,10 +231,13 @@ document.getElementById('logoutButton').addEventListener('click', async () => {
     }
 });
 
+
+
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
     loadUserInfo();
     loadSOSHistory();
+   
 });
 </script>
 {% endblock %}

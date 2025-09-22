@@ -17,6 +17,7 @@ def index():
 def login():
     """Login page"""
     if current_user.is_authenticated:
+        print("alredy login")
         return redirect(url_for('index'))
     return render_template('auth/login.html')
 
@@ -117,7 +118,31 @@ def api_register():
 def api_logout():
     """Logout API endpoint"""
     logout_user()
-    return jsonify({'success': True, 'message': 'Logged out successfully'})
+    return render_template("index.html")
+
+@app.route('/api/auth/status')
+def auth_status():
+    """Check if the user is logged in and return their info"""
+    if current_user.is_authenticated:
+        return jsonify({
+            'authenticated': True,
+            'user': current_user.to_dict()
+        })
+    else:
+        return jsonify({
+            'authenticated': False,
+            'user': None
+        })
+    
+@app.route('/api/auth/get_current_user')
+def get_current_user():
+    if current_user.is_authenticated:
+        return jsonify({
+            'is_authenticated': True,
+            'user':current_user.to_dict()
+        })
+    else:
+        return jsonify({'is_authenticated': False})
 
 @app.route('/api/current-location-risk', methods=['POST'])
 def get_current_location_risk():

@@ -287,3 +287,15 @@ footer .container {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-top: 2rem;
 }
+.safe-places-list {
+    max-height: 300px;   /* adjust height as needed */
+    overflow-y: auto;    /* enables vertical scroll */
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.leaflet-routing-container {
+    display: none !important;
+}

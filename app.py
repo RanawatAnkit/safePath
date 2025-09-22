@@ -49,8 +49,7 @@ with app.app_context():
     db.create_all()
     
     # Generate sample crime data if not exists
-    from data_generator import generate_sample_data
-    generate_sample_data()
+
     
     # Generate sample safe places if not exists
     from safe_places_generator import generate_safe_places_data

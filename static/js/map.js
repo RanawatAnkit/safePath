@@ -8,6 +8,7 @@ class SafePathMap {
         this.routeLayer = null;
         this.currentLocationMarker = null;
         this.safePlacesMap = null;
+        this.control=null;
         
         this.initializeMap();
         this.setupEventListeners();
@@ -63,6 +64,10 @@ class SafePathMap {
             this.loadSafePlaces();
         });
 
+        document.getElementById('findRouteBtn').addEventListener('click',()=>{
+            this.createroute();
+        });
+
         // SOS functionality (if user is authenticated)
         const quickSOSBtn = document.getElementById('quickSOSBtn');
         if (quickSOSBtn) {
@@ -71,8 +76,41 @@ class SafePathMap {
             });
         }
     }
-    
-    getCurrentLocation() {
+    async  geocode(query){
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if(!data || data.length===0) throw new Error('No results');
+        return L.latLng(parseFloat(data[0].lat), parseFloat(data[0].lon));
+    }
+    async createroute(){
+        const source=document.getElementById('sourceInput').value.trim();
+        const dest=document.getElementById('destinationInput').value.trim();
+        if(!source || !dest) return alert('Enter both source and destination');
+        console.log(source,dest)
+
+        const srcLatLng = await this.geocode(source);
+        const destLatLng = await this.geocode(dest);
+        console.log(srcLatLng,destLatLng)
+        if(this.control){this.map.removeControl(this.control); this.control=null;}
+        this.control = L.Routing.control({
+  waypoints: [srcLatLng, destLatLng],
+  router: L.Routing.osrmv1({
+    serviceUrl: 'https://router.project-osrm.org/route/v1',
+    profile: 'driving',
+    alternatives: 3   // request up to 3 alternatives
+  }),
+  showAlternatives: true,
+  altLineOptions: {
+    styles: [
+      { color: 'black', opacity: 0.15, weight: 9 },
+      { color: 'white', opacity: 0.8, weight: 6 },
+      { color: 'blue', opacity: 0.5, weight: 2 }
+    ]
+  }
+}).addTo(this.map);
+}
+ getCurrentLocation() {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
@@ -88,13 +126,31 @@ class SafePathMap {
                     console.error('Geolocation error:', error);
                     this.showError('Unable to get your location. Showing default view.');
                     this.loadCrimeData();
-                }
-            );
-        } else {
-            this.showError('Geolocation is not supported by this browser.');
-            this.loadCrimeData();
-        }
-    }
+                    this.control=L.Routing.control({
+                    waypoints: [srcLatLng, destLatLng],
+                    router: L.Routing.osrmv1({
+                        serviceUrl: 'https://router.project-osrm.org/route/v1',
+                        profile: 'driving', // can be driving, cycling, walking
+                        alternatives: true   // enable multiple routes
+                    }),
+                    showAlternatives: true,
+                    altLineOptions: {
+                        styles: [
+                        { color: 'black', opacity: 0.15, weight: 9 },
+                        { color: 'white', opacity: 0.8, weight: 6 },
+                        { color: 'blue', opacity: 0.5, weight: 2 }
+                        ]
+                    },
+                    routeWhileDragging: true,
+                    createMarker: (i, wp) => L.marker(wp.latLng).bindPopup(i === 0 ? 'Source' : 'Destination')
+                    }).addTo(this.map);
+                                }
+                    );
+                        } else {
+                            this.showError('Geolocation is not supported by this browser.');
+                            this.loadCrimeData();
+                        }
+                    }
     
     updateUserLocationMarker(lat, lng) {
         if (this.currentLocationMarker) {
@@ -380,19 +436,24 @@ class SafePathMap {
 
     // Safe Places functionality
     initializeSafePlacesMap() {
-        if (!document.getElementById('safePlacesMap')) return;
-
-        // Create a separate map for safe places
-        this.safePlacesMap = L.map('safePlacesMap').setView([20.5937, 78.9629], 5);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 18
-        }).addTo(this.safePlacesMap);
-
-        // Set initial placeholder
-        this.updateSafePlacesMapPlaceholder();
+    if (this.safePlacesMap) {
+        return; // already created
     }
+
+    const container = document.getElementById('safePlacesMap');
+    if (!container) {
+        console.error("Safe Places container not found");
+        return;
+    }
+
+    this.safePlacesMap = L.map('safePlacesMap').setView([20.5937, 78.9629], 5);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(this.safePlacesMap);
+}
+
 
     updateSafePlacesMapPlaceholder() {
         const mapDiv = document.getElementById('safePlacesMap');
@@ -409,34 +470,40 @@ class SafePathMap {
     }
 
     findSafePlacesNearMe() {
-        if (!navigator.geolocation) {
-            this.showError('Geolocation is not supported by this browser');
-            return;
-        }
-
-        const btn = document.getElementById('findSafePlacesBtn');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Finding Safe Places...';
-        btn.disabled = true;
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                
-                this.userLocation = { lat, lng };
-                this.loadSafePlaces(lat, lng);
-                
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            },
-            (error) => {
-                this.showError('Unable to get your location');
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        );
+    if (!navigator.geolocation) {
+        this.showError('Geolocation is not supported by this browser');
+        return;
     }
+
+    // ✅ Initialize Safe Places map if needed
+    if (!this.safePlacesMap) {
+        this.initializeSafePlacesMap();
+    }
+
+    const btn = document.getElementById('findSafePlacesBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Finding Safe Places...';
+    btn.disabled = true;
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            this.userLocation = { lat, lng };
+            this.loadSafePlaces(lat, lng);
+            
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        },
+        (error) => {
+            this.showError('Unable to get your location');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    );
+}
+
 
     showAllSafePlaces() {
         this.loadSafePlaces();
@@ -475,74 +542,66 @@ class SafePathMap {
     }
 
     displaySafePlaces(places, userLat = null, userLng = null) {
-        // Clear existing markers
-        this.safePlacesMarkers.forEach(marker => {
-            if (this.safePlacesMap) {
-                this.safePlacesMap.removeLayer(marker);
-            }
-        });
-        this.safePlacesMarkers = [];
+    if (!this.safePlacesMap) {
+        console.error("Safe Places map not initialized");
+        return;
+    }
 
-        // Clear the placeholder and show the actual map
-        const mapContainer = document.getElementById('safePlacesMap');
-        mapContainer.innerHTML = '';
-        
-        this.safePlacesMap = L.map('safePlacesMap').setView([userLat || 20.5937, userLng || 78.9629], userLat ? 12 : 5);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 18
+    // Clear old markers
+    this.safePlacesMarkers.forEach(marker => this.safePlacesMap.removeLayer(marker));
+    this.safePlacesMarkers = [];
+
+    // Add user marker if available
+    if (userLat && userLng) {
+        const userMarker = L.marker([userLat, userLng], {
+            icon: L.divIcon({
+                className: 'user-location-marker',
+                html: '<div style="background-color: #007bff; color: white; padding: 4px; border-radius: 50%; font-size: 12px; text-align: center; width: 20px; height: 20px; line-height: 12px;"><i class="fas fa-user"></i></div>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            })
         }).addTo(this.safePlacesMap);
 
-        // Add user location marker if available
-        if (userLat && userLng) {
-            const userMarker = L.marker([userLat, userLng], {
-                icon: L.divIcon({
-                    className: 'user-location-marker',
-                    html: '<div style="background-color: #007bff; color: white; padding: 4px; border-radius: 50%; font-size: 12px; text-align: center; width: 20px; height: 20px; line-height: 12px;"><i class="fas fa-user"></i></div>',
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10]
-                })
-            }).addTo(this.safePlacesMap);
-            
-            userMarker.bindPopup('Your Location');
-        }
-
-        // Add safe place markers
-        places.forEach(place => {
-            const icon = this.getSafePlaceIcon(place.place_type);
-            const marker = L.marker([place.latitude, place.longitude], {
-                icon: L.divIcon({
-                    className: 'safe-place-marker',
-                    html: `<div style="background-color: ${icon.color}; color: white; padding: 4px; border-radius: 50%; font-size: 12px; text-align: center; width: 24px; height: 24px; line-height: 16px;">${icon.icon}</div>`,
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12]
-                })
-            }).addTo(this.safePlacesMap);
-
-            marker.bindPopup(`
-                <div style="color: #333;">
-                    <strong>${place.name}</strong><br>
-                    <small>${place.place_type.replace('_', ' ').toUpperCase()}</small><br>
-                    ${place.address}<br>
-                    ${place.phone ? `<i class="fas fa-phone"></i> ${place.phone}<br>` : ''}
-                    ${place.hours ? `<i class="fas fa-clock"></i> ${place.hours}<br>` : ''}
-                    ${place.verified ? '<span class="badge bg-success">Verified</span>' : ''}
-                </div>
-            `);
-
-            this.safePlacesMarkers.push(marker);
-        });
-
-        // Fit map to show all places
-        if (this.safePlacesMarkers.length > 0) {
-            const group = new L.featureGroup(this.safePlacesMarkers);
-            this.safePlacesMap.fitBounds(group.getBounds().pad(0.1));
-        }
-
-        // Update the places list
-        this.updateSafePlacesList(places);
+        userMarker.bindPopup('Your Location');
+        this.safePlacesMarkers.push(userMarker);
     }
+
+    // Add safe places
+    places.forEach(place => {
+        const icon = this.getSafePlaceIcon(place.place_type);
+        const marker = L.marker([place.latitude, place.longitude], {
+            icon: L.divIcon({
+                className: 'safe-place-marker',
+                html: `<div style="background-color: ${icon.color}; color: white; padding: 4px; border-radius: 50%; font-size: 12px; text-align: center; width: 24px; height: 24px; line-height: 16px;">${icon.icon}</div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            })
+        }).addTo(this.safePlacesMap);
+
+        marker.bindPopup(`
+            <div style="color: #333;">
+                <strong>${place.name}</strong><br>
+                <small>${place.place_type.replace('_', ' ').toUpperCase()}</small><br>
+                ${place.address}<br>
+                ${place.phone ? `<i class="fas fa-phone"></i> ${place.phone}<br>` : ''}
+                ${place.hours ? `<i class="fas fa-clock"></i> ${place.hours}<br>` : ''}
+                ${place.verified ? '<span class="badge bg-success">Verified</span>' : ''}
+            </div>
+        `);
+
+        this.safePlacesMarkers.push(marker);
+    });
+
+    // Fit bounds
+    if (this.safePlacesMarkers.length > 0) {
+        const group = new L.featureGroup(this.safePlacesMarkers);
+        this.safePlacesMap.fitBounds(group.getBounds().pad(0.1));
+    }
+
+    // Update sidebar/list
+    this.updateSafePlacesList(places);
+}
+
 
     getSafePlaceIcon(placeType) {
         const icons = {
@@ -662,18 +721,27 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Authentication status check
-function checkAuthStatus() {
-    // This would typically check with the server for auth status
-    // For now, we'll check if the user has authentication-related elements
+async function checkAuthStatus() {
     const authLinks = document.getElementById('authLinks');
     const unauthLinks = document.getElementById('unauthLinks');
     const unauthLinksRegister = document.getElementById('unauthLinksRegister');
-    const sosCard = document.getElementById('sosCard');
-    
-    // Simple check - in a real app, you'd make an API call
-    // For now, we'll show login links by default
-    if (authLinks) authLinks.classList.add('d-none');
-    if (unauthLinks) unauthLinks.classList.remove('d-none');
-    if (unauthLinksRegister) unauthLinksRegister.classList.remove('d-none');
-    if (sosCard) sosCard.classList.add('d-none');
+    const usernameDisplay = document.getElementById('usernameDisplay');
+
+    try {
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+
+        if (data.authenticated) {
+            if (authLinks) authLinks.classList.remove('d-none');
+            if (unauthLinks) unauthLinks.classList.add('d-none');
+            if (unauthLinksRegister) unauthLinksRegister.classList.add('d-none');
+            if (usernameDisplay) usernameDisplay.textContent = data.user.username;
+        } else {
+            if (authLinks) authLinks.classList.add('d-none');
+            if (unauthLinks) unauthLinks.classList.remove('d-none');
+            if (unauthLinksRegister) unauthLinksRegister.classList.remove('d-none');
+        }
+    } catch (error) {
+        console.error('Error checking auth status:', error);
+    }
 }
