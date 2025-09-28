@@ -3,10 +3,12 @@ import logging
 from datetime import datetime, timedelta
 from flask import render_template, request, jsonify, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, login_required, current_user
+import requests
 from app import app, db
 from models import CrimeData, SafeRoute, User, SOSAlert, SafePlace
 from crime_predictor import crime_predictor
 import numpy as np
+import math
 
 @app.route('/')
 def index():
@@ -531,4 +533,68 @@ def get_safe_place_types():
         'types': types
     })
 
+def haversine(coord1, coord2):
+    R = 6371000  # radius of Earth in meters
+    lat1, lon1 = math.radians(coord1[1]), math.radians(coord1[0])
+    lat2, lon2 = math.radians(coord2[1]), math.radians(coord2[0])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+# Calculate risk for a single point
+def calculate_point_risk(point, crimes, radius=200):
+    risk = 0
+    for crime in crimes:
+        distance = haversine(point, [crime['lon'], crime['lat']])
+        if distance <= radius:
+            risk += crime['weight'] / (distance + 1)
+    return risk
+
+# Calculate risk for a route
+def calculate_route_risk(route_geometry, crimes):
+    points = route_geometry['coordinates']
+    total_risk = 0
+    for point in points:
+        total_risk += calculate_point_risk(point, crimes)
+    return total_risk / len(points) if points else 0
+
+@app.route('/get_routes', methods=['POST'])
+def get_routes():
+    data = request.json
+    start = data['srcLatLng']  # [lat, lon]
+    end = data['destLatLng']      # [lat, lon]
+
+    # ✅ Load crime data from DB
+    crimes = []
+    with app.app_context():
+        crime_records = CrimeData.query.all()
+        for c in crime_records:
+            crimes.append({
+                "lat": c.latitude,
+                "lon": c.longitude,
+                "weight": c.severity  # use severity as risk weight
+            })
+    print(start,end)
+    # OSRM route request (public demo server)
+    url = f"http://router.project-osrm.org/route/v1/driving/{start["lng"]},{start["lat"]};{end['lng']},{end["lat"]}?overview=full&geometries=geojson&alternatives=true"
+    response = requests.get(url).json()
+
+    routes = []
+    for r in response['routes']:
+        risk = calculate_route_risk(r['geometry'], crimes)
+        if risk==0.00448984908395163:
+            risk==100
+        print("risk")
+        print(risk)
+        routes.append({
+            'geometry': r['geometry'],
+            'duration': r['duration'],
+            'distance': r['distance'],
+            'risk': risk
+        })
+    print(routes)
+    return jsonify(routes)
+    
 from datetime import timedelta

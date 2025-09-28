@@ -9,6 +9,8 @@ class SafePathMap {
         this.currentLocationMarker = null;
         this.safePlacesMap = null;
         this.control=null;
+        this.startMarker = null;
+        this.endMarker = null;
         
         this.initializeMap();
         this.setupEventListeners();
@@ -83,6 +85,7 @@ class SafePathMap {
         if(!data || data.length===0) throw new Error('No results');
         return L.latLng(parseFloat(data[0].lat), parseFloat(data[0].lon));
     }
+  
     async createroute(){
         const source=document.getElementById('sourceInput').value.trim();
         const dest=document.getElementById('destinationInput').value.trim();
@@ -92,24 +95,54 @@ class SafePathMap {
         const srcLatLng = await this.geocode(source);
         const destLatLng = await this.geocode(dest);
         console.log(srcLatLng,destLatLng)
-        if(this.control){this.map.removeControl(this.control); this.control=null;}
-        this.control = L.Routing.control({
-  waypoints: [srcLatLng, destLatLng],
-  router: L.Routing.osrmv1({
-    serviceUrl: 'https://router.project-osrm.org/route/v1',
-    profile: 'driving',
-    alternatives: 3   // request up to 3 alternatives
-  }),
-  showAlternatives: true,
-  altLineOptions: {
-    styles: [
-      { color: 'black', opacity: 0.15, weight: 9 },
-      { color: 'white', opacity: 0.8, weight: 6 },
-      { color: 'blue', opacity: 0.5, weight: 2 }
-    ]
-  }
-}).addTo(this.map);
+        
+
+    const res = await fetch('/get_routes', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({srcLatLng, destLatLng})
+    });
+    const routes = await res.json();
+    console.log(routes)
+    // Clear previous routes
+    this.map.eachLayer((layer) => { if(layer instanceof L.Polyline) this.map.removeLayer(layer); });
+
+    // Find min and max risk
+    const risks = routes.map(r => r.risk);
+    const minRisk = Math.min(...risks);
+    const maxRisk = Math.max(...risks);
+
+    // Function to map risk to color
+    const getColor = (risk) => {
+        if (maxRisk === minRisk) return 'yellow'; // all same risk
+        const ratio = (risk - minRisk) / (maxRisk - minRisk);
+        if (ratio < 0.33) return 'green';
+        else if (ratio < 0.66) return 'yellow';
+        else return 'red';
+    };
+
+       // Remove old markers
+    if (this.startMarker) {
+        this.map.removeLayer(this.startMarker);
+    }
+    if (this.endMarker) {
+        this.map.removeLayer(this.endMarker);
+    }
+     this.startMarker = L.marker([srcLatLng.lat, srcLatLng.lng])
+        .bindPopup("Start")
+        .addTo(this.map);
+
+    // Add end marker
+    this.endMarker = L.marker([destLatLng.lat, destLatLng.lng])
+        .bindPopup("End")
+        .addTo(this.map);
+
+    routes.forEach((route) => {
+        const color = getColor(route.risk);
+        L.geoJSON(route.geometry, {color, weight:3}).addTo(this.map);
+    });
 }
+
  getCurrentLocation() {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
