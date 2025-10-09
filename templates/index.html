@@ -286,9 +286,19 @@
             <form id="crimeForm" enctype="multipart/form-data">
               <div class="row g-3">
                 <div class="col-12">
-                  <label class="form-label text-white">Crime Title</label>
-                  <input type="text" id="crimeTitle" class="form-control" placeholder="e.g. Theft near market" required>
-                </div>
+                        <label class="form-label text-white">Crime Type</label>
+                        <select id="crimeType" class="form-control" required>
+                            <option value="" disabled selected>Select a Crime Type</option>
+                            <option value="Assault">Assault</option>
+                            <option value="Cyber Crime">Cyber Crime</option>
+                            <option value="Drug Abuse">Drug Abuse</option>
+                            <option value="Fraud">Fraud</option>
+                            <option value="Murder">Murder</option>
+                            <option value="Robbery">Robbery</option>
+                            <option value="Theft">Theft</option>
+                            <option value="Vandalism">Vandalism</option>
+                        </select>
+                        </div>
 
                 <div class="col-12">
                   <label class="form-label text-white">Description</label>

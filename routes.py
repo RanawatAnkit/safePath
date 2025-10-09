@@ -1,4 +1,7 @@
 import json
+import os
+
+from werkzeug.utils import secure_filename
 import logging
 from datetime import datetime, timedelta
 from flask import render_template, request, jsonify, redirect, url_for, flash, session
@@ -651,3 +654,129 @@ def get_routes():
 '''
 
 from datetime import timedelta
+
+#<------------------------------------New changes from Here---------------------------------------->
+# Add this route to your routes.py file
+
+@app.route('/api/report-crime', methods=['POST'])
+def report_crime():
+    """Handle user crime report submission"""
+    try:
+        # Get form data
+        crime_type = request.form.get('crimeType')
+        description = request.form.get('description')
+        location = request.form.get('location')
+        latitude = request.form.get('latitude')
+        longitude = request.form.get('longitude')
+        
+        # Validate required fields
+        if not all([crime_type, description, location, latitude, longitude]):
+            return jsonify({
+                'success': False,
+                'error': 'All fields are required'
+            }), 400
+        
+        # Convert coordinates to float
+        try:
+            latitude = float(latitude)
+            longitude = float(longitude)
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid coordinates'
+            }), 400
+        
+        # Handle file upload
+        evidence_file_path = None
+        if 'evidence' in request.files:
+            file = request.files['evidence']
+            
+            if file and file.filename:
+                # Secure the filename
+                filename = secure_filename(file.filename)
+                
+                # Add timestamp to filename to make it unique
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                name, ext = os.path.splitext(filename)
+                unique_filename = f"{name}_{timestamp}{ext}"
+                
+                # Ensure upload directory exists
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                
+                # Save the file
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                file.save(file_path)
+                
+                # Store relative path
+                evidence_file_path = f"evidence/{unique_filename}"
+        
+        # Map crime type to severity (you can adjust this mapping)
+        severity_mapping = {
+            'Assault': 4,
+            'Cyber Crime': 3,
+            'Drug Abuse': 3,
+            'Fraud': 3,
+            'Murder': 5,
+            'Robbery': 4,
+            'Theft': 2,
+            'Vandalism': 2
+        }
+        
+        severity = severity_mapping.get(crime_type, 3)  # Default to 3 if not found
+        
+        # Create new crime report
+        crime_report = CrimeData(
+            latitude=latitude,
+            longitude=longitude,
+            crime_type=crime_type,
+            description=description,
+            area_name=location,
+            severity=severity,
+            evidence_file=evidence_file_path,
+            is_user_report=True,
+            verified=False,
+            reported_by=current_user.id if current_user.is_authenticated else None,
+            timestamp=datetime.utcnow()
+        )
+        
+        db.session.add(crime_report)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Crime report submitted successfully',
+            'report_id': crime_report.id,
+            'crime_data': crime_report.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error submitting crime report: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to submit crime report'
+        }), 500
+
+# Optional: Route to get user's submitted reports
+@app.route('/api/my-reports')
+@login_required
+def get_my_reports():
+    """Get current user's crime reports"""
+    try:
+        reports = CrimeData.query.filter_by(
+            reported_by=current_user.id,
+            is_user_report=True
+        ).order_by(CrimeData.timestamp.desc()).all()
+        
+        return jsonify({
+            'success': True,
+            'reports': [report.to_dict() for report in reports],
+            'total': len(reports)
+        })
+        
+    except Exception as e:
+        logging.error(f"Error getting user reports: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to get reports'
+        }), 500

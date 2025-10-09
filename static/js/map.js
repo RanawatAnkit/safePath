@@ -777,3 +777,249 @@ async function checkAuthStatus() {
         console.error('Error checking auth status:', error);
     }
 }
+
+
+//<------------------------------------New changes from Here---------------------------------------->
+// Add this to your map.js file
+// Crime Report Form Handler
+document.addEventListener('DOMContentLoaded', function() {
+    // Use Current Location button for crime report
+    const useCurrentLocationBtn = document.getElementById('useCurrentLocation');
+    if (useCurrentLocationBtn) {
+        useCurrentLocationBtn.addEventListener('click', function() {
+            if (navigator.geolocation) {
+                // Show loading state
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Getting Location...';
+                this.disabled = true;
+                
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        // Get location name using reverse geocoding
+                        try {
+                            const response = await fetch(
+                                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+                            );
+                            const data = await response.json();
+                            
+                            // Set location in the form
+                            const locationInput = document.getElementById('crimeLocation');
+                            if (locationInput) {
+                                locationInput.value = data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                            }
+                            
+                            // Store coordinates in hidden fields or data attributes
+                            locationInput.dataset.latitude = lat;
+                            locationInput.dataset.longitude = lng;
+                            
+                            showSuccessMessage('Current location set successfully!');
+                        } catch (error) {
+                            console.error('Error getting location name:', error);
+                            // Fallback to coordinates
+                            const locationInput = document.getElementById('crimeLocation');
+                            if (locationInput) {
+                                locationInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                                locationInput.dataset.latitude = lat;
+                                locationInput.dataset.longitude = lng;
+                            }
+                            showSuccessMessage('Current location set!');
+                        }
+                        
+                        // Restore button
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        showErrorMessage('Unable to get your location. Please enable location services.');
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }
+                );
+            } else {
+                showErrorMessage('Geolocation is not supported by this browser');
+            }
+        });
+    }
+    
+    // Crime Report Form Submission
+    const crimeForm = document.getElementById('crimeForm');
+    if (crimeForm) {
+        crimeForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const crimeType = document.getElementById('crimeType').value;
+            const description = document.getElementById('crimeDescription').value;
+            const locationInput = document.getElementById('crimeLocation');
+            const location = locationInput.value;
+            const file = document.getElementById('crimeFile').files[0];
+            
+            // Validate
+            if (!crimeType || !description || !location || !file) {
+                showErrorMessage('Please fill all required fields');
+                return;
+            }
+            
+            // Get coordinates from location input
+            let latitude = locationInput.dataset.latitude;
+            let longitude = locationInput.dataset.longitude;
+            
+            // If coordinates not set via "Use Current Location", try to geocode
+            if (!latitude || !longitude) {
+                try {
+                    const geoResponse = await fetch(
+                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`
+                    );
+                    const geoData = await geoResponse.json();
+                    
+                    if (geoData && geoData.length > 0) {
+                        latitude = geoData[0].lat;
+                        longitude = geoData[0].lon;
+                    } else {
+                        showErrorMessage('Could not find location. Please use "Use Current Location" button.');
+                        return;
+                    }
+                } catch (error) {
+                    showErrorMessage('Error geocoding location. Please use "Use Current Location" button.');
+                    return;
+                }
+            }
+            
+            // Create FormData object
+            const formData = new FormData();
+            formData.append('crimeType', crimeType);
+            formData.append('description', description);
+            formData.append('location', location);
+            formData.append('latitude', latitude);
+            formData.append('longitude', longitude);
+            formData.append('evidence', file);
+            
+            // Show loading modal
+            showLoadingModal();
+            
+            try {
+                const response = await fetch('/api/report-crime', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                hideLoadingModal();
+                
+                if (data.success) {
+                    // Show success message
+                    showReportConfirmation(data);
+                    
+                    // Reset form
+                    crimeForm.reset();
+                    locationInput.removeAttribute('data-latitude');
+                    locationInput.removeAttribute('data-longitude');
+                    
+                    // Scroll to confirmation
+                    document.getElementById('reportResult').scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'nearest' 
+                    });
+                } else {
+                    showErrorMessage('Failed to submit report: ' + data.error);
+                }
+            } catch (error) {
+                hideLoadingModal();
+                console.error('Error submitting crime report:', error);
+                showErrorMessage('Network error occurred while submitting report');
+            }
+        });
+    }
+});
+
+function showReportConfirmation(data) {
+    const reportResult = document.getElementById('reportResult');
+    const reportDetails = document.getElementById('reportDetails');
+    
+    if (reportResult && reportDetails) {
+        const timestamp = new Date().toLocaleString();
+        
+        reportDetails.innerHTML = `
+            <div class="alert alert-success">
+                <h5 class="alert-heading">
+                    <i class="fas fa-check-circle me-2"></i>Report Submitted Successfully!
+                </h5>
+                <hr>
+                <p class="mb-2"><strong>Report ID:</strong> #${data.report_id}</p>
+                <p class="mb-2"><strong>Crime Type:</strong> ${data.crime_data.crime_type}</p>
+                <p class="mb-2"><strong>Location:</strong> ${data.crime_data.area_name}</p>
+                <p class="mb-2"><strong>Time:</strong> ${timestamp}</p>
+                <p class="mb-0"><strong>Status:</strong> 
+                    <span class="badge bg-warning">Pending Verification</span>
+                </p>
+                <hr>
+                <p class="mb-0 small">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Your report has been recorded and will be reviewed by authorities. 
+                    Thank you for helping make your community safer.
+                </p>
+            </div>
+        `;
+        
+        reportResult.style.display = 'block';
+        
+        // Show success toast
+        showSuccessMessage('Crime report submitted successfully!');
+    }
+}
+
+function showLoadingModal() {
+    const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    modal.show();
+}
+
+function hideLoadingModal() {
+    const modalElement = document.getElementById('loadingModal');
+    const modal = bootstrap.Modal.getInstance(modalElement);
+    if (modal) {
+        modal.hide();
+    }
+}
+
+function showSuccessMessage(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    alertDiv.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+function showErrorMessage(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed';
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    alertDiv.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}

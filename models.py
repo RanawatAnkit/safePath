@@ -51,6 +51,18 @@ class CrimeData(db.Model):
     area_name = db.Column(db.String(200))
     description = db.Column(db.Text)
     
+    #<------------------>
+    # NEW FIELDS FOR USER REPORTS
+    evidence_file = db.Column(db.String(500))  # Store file path
+    reported_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Optional: track who reported
+    is_user_report = db.Column(db.Boolean, default=False)  # Distinguish user reports from system data
+    verified = db.Column(db.Boolean, default=False)  # For admin verification
+    
+    # Relationship (optional)
+    reporter = db.relationship('User', backref=db.backref('reported_crimes', lazy=True))
+
+    #<--------------->
+
     def __repr__(self):
         return f'<CrimeData {self.crime_type} at ({self.latitude}, {self.longitude})>'
     
