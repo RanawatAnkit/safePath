@@ -22,11 +22,7 @@ class CrimePredictor {
             this.getCurrentLocationRisk();
         });
         
-        // Route planner form
-        document.getElementById('routeForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.calculateSafeRoute();
-        });
+        
         
         // Use current location button
         document.getElementById('useCurrentLocation').addEventListener('click', () => {
@@ -323,6 +319,7 @@ class CrimePredictor {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    console.log(data)
                     this.updateDashboard(data);
                 } else {
                     console.error('Failed to load statistics:', data.error);

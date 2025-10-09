@@ -158,9 +158,14 @@ document.getElementById('sosButton').addEventListener('click', async () => {
     const originalText = button.innerHTML;
     button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending SOS...';
     button.disabled = true;
-    
+        const response = await fetch('/api/auth/get_current_user');
+        const data = await response.json();
+        const user=data.user;
     navigator.geolocation.getCurrentPosition(async (position) => {
         try {
+            console.log(1)
+            console.log(user.emergency_phone)
+
             const response = await fetch('/api/sos/alert', {
                 method: 'POST',
                 headers: {
@@ -169,7 +174,9 @@ document.getElementById('sosButton').addEventListener('click', async () => {
                 body: JSON.stringify({
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude,
-                    message: document.getElementById('sosMessage').value || 'Emergency help needed!'
+                    message: document.getElementById('sosMessage').value || 'Emergency help needed!',
+                    number:user.emergency_phone
+                    
                 })
             });
             

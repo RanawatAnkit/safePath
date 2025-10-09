@@ -9,6 +9,12 @@ from models import CrimeData, SafeRoute, User, SOSAlert, SafePlace
 from crime_predictor import crime_predictor
 import numpy as np
 import math
+from twilio.rest import Client
+
+ACCOUNT_SID = "ACdc27b89880dc60cfbf4f53bc18c6dcda"  # Your Account SID from Twilio
+AUTH_TOKEN = "f28770e1ac335eea85cb02316b86156c"    # Your Auth Token from Twilio
+TWILIO_PHONE_NUMBER = "+12182202974" 
+client = Client(ACCOUNT_SID, AUTH_TOKEN)
 
 @app.route('/')
 def index():
@@ -294,7 +300,7 @@ def get_crime_statistics():
         ).count()
         
         total_crimes = CrimeData.query.count()
-        
+        print(total_crimes,recent_crimes)
         return jsonify({
             'success': True,
             'total_crimes': total_crimes,
@@ -407,28 +413,44 @@ def create_sos_alert():
         data = request.get_json()
         latitude = float(data.get('latitude'))
         longitude = float(data.get('longitude'))
-        message = data.get('message', 'Emergency help needed!')
-        
-        # Create SOS alert
+        message_text = data.get('message', 'Emergency help needed!')
+        number = data.get('number', '').strip()
+
+        # Ensure phone number is in proper format
+        if not number.startswith('+'):
+            number = f'+91{number}'
+
+        print(data)
+
+        # Send SOS SMS via Twilio
+        twilio_message = client.messages.create(
+            to=number,
+            from_=TWILIO_PHONE_NUMBER,
+            body=f"{message_text}\nLocation: https://www.google.com/maps?q={latitude},{longitude}"
+        )
+
+        # ✅ Store only Twilio message SID (string) in DB
         sos_alert = SOSAlert(
             user_id=current_user.id,
             latitude=latitude,
             longitude=longitude,
-            message=message,
+            message=twilio_message.sid,   # <-- Fix here
             status='active'
         )
-        
+
         db.session.add(sos_alert)
         db.session.commit()
-        
-        # In a real app, you would send notifications to emergency contacts
-        # and potentially law enforcement
-        
+
         return jsonify({
             'success': True,
             'message': 'SOS alert sent successfully',
             'alert': sos_alert.to_dict()
-        })
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error creating SOS alert: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
         
     except Exception as e:
         db.session.rollback()
@@ -578,7 +600,8 @@ def get_routes():
             })
     print(start,end)
     # OSRM route request (public demo server)
-    url = f"http://router.project-osrm.org/route/v1/driving/{start["lng"]},{start["lat"]};{end['lng']},{end["lat"]}?overview=full&geometries=geojson&alternatives=true"
+    url = f"http://router.project-osrm.org/route/v1/driving/{start['lng']},{start['lat']};{end['lng']},{end['lat']}?overview=full&geometries=geojson&alternatives=true"
+
     response = requests.get(url).json()
 
     routes = []
@@ -597,4 +620,34 @@ def get_routes():
     print(routes)
     return jsonify(routes)
     
+'''def add_crime_record(latitude, longitude, crime_type, timestamp, severity, area_name, description):
+    """Add a new crime record to the database"""
+
+    try:
+        # Convert timestamp to datetime if it's a string
+        if isinstance(timestamp, str):
+            timestamp = pd.to_datetime(timestamp)
+
+        crime = CrimeData(
+            latitude=latitude,
+            longitude=longitude,
+            crime_type=crime_type,
+            timestamp=timestamp,
+            severity=int(severity),
+            area_name=area_name,
+            description=description
+        )
+
+        db.session.add(crime)
+        db.session.commit()
+
+        logging.info(f"Crime record added successfully: {crime}")
+        return True
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error adding crime record: {e}")
+        return False
+'''
+
 from datetime import timedelta

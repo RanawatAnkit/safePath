@@ -85,7 +85,6 @@ class SafePathMap {
         if(!data || data.length===0) throw new Error('No results');
         return L.latLng(parseFloat(data[0].lat), parseFloat(data[0].lon));
     }
-  
     async createroute(){
         const source=document.getElementById('sourceInput').value.trim();
         const dest=document.getElementById('destinationInput').value.trim();
