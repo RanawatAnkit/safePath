@@ -93,17 +93,27 @@ python -m venv venv
 venv\Scripts\activate          # Windows
 # source venv/bin/activate     # macOS / Linux
 
-pip install flask flask-sqlalchemy flask-login scikit-learn pandas numpy joblib requests twilio werkzeug email-validator
+pip install flask flask-sqlalchemy flask-login scikit-learn pandas numpy joblib requests twilio werkzeug email-validator python-dotenv
 ```
 
-### Configuration (optional)
+### Configuration
+
+Copy `.env.example` to `.env` and fill in your values (`.env` is git-ignored):
+
+```bash
+copy .env.example .env      # Windows
+# cp .env.example .env      # macOS / Linux
+```
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `SESSION_SECRET` | dev key | Flask session secret |
 | `DATABASE_URL` | `sqlite:///safepath.db` | Database connection string |
+| `TWILIO_ACCOUNT_SID` | – | Twilio Account SID (SOS SMS) |
+| `TWILIO_AUTH_TOKEN` | – | Twilio Auth Token (SOS SMS) |
+| `TWILIO_PHONE_NUMBER` | – | Your Twilio sender number |
 
-Twilio credentials (`ACCOUNT_SID`, `AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`) are configured at the top of `routes.py`.
+If the Twilio variables are not set, the app still runs; only the SOS SMS feature is disabled.
 > Note: Twilio trial accounts can only send SMS to verified numbers.
 
 ### Run

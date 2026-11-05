@@ -14,10 +14,16 @@ import numpy as np
 import math
 from twilio.rest import Client
 
-ACCOUNT_SID = "ACdc27b89880dc60cfbf4f53bc18c6dcda"  # Your Account SID from Twilio
-AUTH_TOKEN = "f28770e1ac335eea85cb02316b86156c"    # Your Auth Token from Twilio
-TWILIO_PHONE_NUMBER = "+12182202974" 
-client = Client(ACCOUNT_SID, AUTH_TOKEN)
+# Twilio credentials are read from environment variables (never hardcode them)
+TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
+TWILIO_PHONE_NUMBER = os.environ.get("TWILIO_PHONE_NUMBER")
+
+client = None
+if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER:
+    client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+else:
+    logging.warning("Twilio credentials not set - SOS SMS alerts are disabled")
 
 @app.route('/')
 def index():
@@ -423,7 +429,11 @@ def create_sos_alert():
         if not number.startswith('+'):
             number = f'+91{number}'
 
-        print(data)
+        if client is None:
+            return jsonify({
+                'success': False,
+                'error': 'SMS service is not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER.'
+            }), 503
 
         # Send SOS SMS via Twilio
         twilio_message = client.messages.create(

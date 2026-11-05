@@ -6,6 +6,13 @@ from flask_login import LoginManager
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+# Load variables from a local .env file if python-dotenv is installed
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
